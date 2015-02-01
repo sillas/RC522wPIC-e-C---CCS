@@ -1,0 +1,12 @@
+$ cat .gitignore
+*.[oa]
+*.bak
+*.cof
+*.err
+*.esym
+*.lst
+*.pjt
+*.sta
+*.sym
+*.tre
+*~
