@@ -18,7 +18,7 @@
 #define RST_PIN               PIN_A2
 
 #define BUTTON                PIN_A3 //IN
-#define LED                   PIN_A4  //LED
+#define LED                   PIN_A4 //LED
 //------------------------------------------------------------------
 
 //And MF522 The error code is returned when communication
@@ -579,7 +579,7 @@ void main(void){
     uchar serNum[5];
     uchar writeDate[16];  //Dados a serem gravados no cartão
     uchar sectorKeyA[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    bit Led_s = 0, _return; //indica led apagado
+    bit Led_s = 0, Led_f = 0; //indica led apagado
     uchar i, ok = 2;
     uchar status;
     uchar blockAddr = 7;    //Seleciona o endereço do bloco (setor de autenticação)
@@ -590,7 +590,6 @@ void main(void){
     
     while(TRUE){
         ok = 2;
-        _return = 0;
 
         status = MFRC522_Request(PICC_REQIDL, writeDate);
         status = MFRC522_Anticoll(writeDate);
@@ -605,13 +604,14 @@ void main(void){
             output_high(LED); //acende
             delay_ms(50);
             output_low(LED); //apaga
+            Led_f = 0;//supoe-se que o led esta apagado 
             
             if(Led_s == 1 && status == MI_OK){
-                output_low(LED); //se o led estiver aceso (aterrado!!!),  então apaga (seta o bit!)
-                Led_s = 0;//indica led apagado
-                delay_ms(1000);
-                _return = 1;
+                output_low(LED); //se o led estiver aceso e detectou um cartão,  então apaga (seta o bit!)
+                Led_s = 0; //indica que o led está apagado
+                Led_f = 1; //indica que o led estava aceso.
             }   
+            
         }
 
          //--------------------- Mostra o número serial
@@ -622,69 +622,68 @@ void main(void){
             printf("-");
         }//-------------------------------------------
         
-        if(_return == 0){  //Se o led está apagado, queremos acende-lo.
-           MFRC522_SelectTag(serNum);
-           //======================================================================================================= ROTINA PARA LER O CARTÃO
-           status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autentica primeiro
-           if (status == MI_OK){                                                 //e verifica se deu certo...
-               printf("Lendo:\n");
-               status = MFRC522_Read(setor, writeDate);                                //Ler o cartão - "str" recebe os dados. (lembrando, são 16 bytes - str[0] a str[15])
-   
-               if(status != MI_OK)
-                   printf("Erro!");                           //verifica se deu erro na leitura
-           //=======================================================================================================
-   
-   
-           //-------------------------------- Usando os dados lidos do cartão
-               else{
-                  printf("Dados: ");
-                  for (i=0; i<16; i++)        //percorre todo o vetor dos dados
-                      printf("%i -", writeDate[i]); //mostra os dados lidos byte por byte
-                  printf("\nSaldo anterior: %i\n", writeDate[15]);
-            
-                  //--------------------------
-                  if(writeDate[15] <= 0){
-                      if(input(BUTTON) == 1) ok = 1;
-                      else printf(" Sem creditos! \n"); 
-                  }
-                  else ok = 0;
-                  if( input(BUTTON) == 1 || writeDate[15] > 10 )ok = 1;
-                  //--------------------------
-                
-                  if(writeDate[15] > 0)Led_s = 1; //acende o led
-              }
-           }
-           //-----------------------------------------------
-   
-   
-           if(ok < 2){
-               //Serial.println("Escrevendo...");
-               //=================================================================================================== ROTINA PARA ESCREVER NO CARTÃO
-               if(ok == 1){
-                   printf("Recarregando.\n");
-                   writeDate[15] = 10;
-               } 
-               else{
-                   printf("Saldo atual: %i\n", writeDate[15]-1);
-                   writeDate[15] = writeDate[15] - 1;  //decrementa o valor em write data na posição 15 (ultima posição)
+
+        MFRC522_SelectTag(serNum);
+        //======================================================================================================= ROTINA PARA LER O CARTÃO
+        status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autentica primeiro
+        if (status == MI_OK){                                                 //e verifica se deu certo...
+            printf("Lendo:\n");
+            status = MFRC522_Read(setor, writeDate);                                //Ler o cartão - "str" recebe os dados. (lembrando, são 16 bytes - str[0] a str[15])
+
+
+        //=======================================================================================================
+
+
+        //-------------------------------- Usando os dados lidos do cartão
+            if(status == MI_OK){
+               printf("Dados: ");
+               for (i=0; i<16; i++)        //percorre todo o vetor dos dados
+                   printf("%i -", writeDate[i]); //mostra os dados lidos byte por byte
+               printf("\nSaldo anterior: %i\n", writeDate[15]);
+         
+               //--------------------------
+               if(writeDate[15] <= 0){
+                   if(input(BUTTON) == 1) ok = 1;
+                   else printf(" Sem creditos! \n"); 
                }
+               else ok = 0;
+               if( input(BUTTON) == 1 || writeDate[15] > 10 )ok = 1;
+               //--------------------------
              
-               status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autenticar primeiro
-               if (status == MI_OK){                                                 //se autenticou...
-                   status = MFRC522_Write(setor, writeDate);                         //Escreve no cartão os dados contidos em "writeData"
-                 
-                   //if(status == MI_OK) Serial.println("escrito OK!");                //verifica se escreveu corretamente
-                   //else Serial.println("Erro na escrita!");
-               }
-               else printf("Erro: autent. p escrita!\n");
-               //===================================================================================================
-               
-           }
-           if(Led_s == 1){
-               output_high(LED); //acende led, Led_s é 1
-               delay_ms(1000);
+               if(writeDate[15] > 0)Led_s = 1; //acende o led
            }
         }
+        //-----------------------------------------------
+
+
+        if(ok < 2 && Led_f == 0){
+            //Serial.println("Escrevendo...");
+            //=================================================================================================== ROTINA PARA ESCREVER NO CARTÃO
+            if(ok == 1){
+                printf("Recarregando.\n");
+                writeDate[15] = 10;
+            } 
+            else{
+                printf("Saldo atual: %i\n", writeDate[15]-1);
+                writeDate[15] = writeDate[15] - 1;  //decrementa o valor em write data na posição 15 (ultima posição)
+            }
+          
+            status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autenticar primeiro
+            if (status == MI_OK){                                                 //se autenticou...
+                status = MFRC522_Write(setor, writeDate);                         //Escreve no cartão os dados contidos em "writeData"
+              
+                //if(status == MI_OK) Serial.println("escrito OK!");                //verifica se escreveu corretamente
+                //else Serial.println("Erro na escrita!");
+            }
+            else printf("Erro: autent. p escrita!\n");
+            //===================================================================================================
+            
+        }
+        if(Led_s == 1){
+            output_high(LED); //acende led, Led_s é 1
+            delay_ms(1000);
+        }
+        
         MFRC522_Halt(); //leitor em modo hibernation
 
         //-------------------------------------
