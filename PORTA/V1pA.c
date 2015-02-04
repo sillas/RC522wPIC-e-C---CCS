@@ -1,5 +1,5 @@
 #include <16F628A.h> 
-#fuses INTRC_IO, NOWDT, NOPROTECT, BROWNOUT, PUT, NOLVP, NOMCLR
+#fuses INTRC_IO, NOWDT, NOPROTECT, BROWNOUT, PUT, NOLVP, MCLR
 #use delay(clock=4000000)
 #use rs232 (uart1, baud = 9600, parity=n )
 #use fast_io(b)
@@ -18,7 +18,7 @@
 #define RST_PIN               PIN_A2
 
 #define BUTTON                PIN_A3 //IN
-#define LED                   PIN_A4 //LED
+#define LED                   PIN_B3 //LED
 //------------------------------------------------------------------
 
 //And MF522 The error code is returned when communication
@@ -36,7 +36,7 @@
 //#define     PCD_TRANSMIT          0x04               //Transmit data
 #define     PCD_TRANSCEIVE        0x0C               //Transmit and receive data,
 #define     PCD_RESETPHASE        0x0F               //Reset
-#define     PCD_CALCCRC           0x03               //CRC Calculate - VerificaÁ„o de erros nos dados
+#define     PCD_CALCCRC           0x03               //CRC Calculate - Verifica√ß√£o de erros nos dados
 
 // Mifare_One card command word
 #define    PICC_REQIDL           0x26               // find the antenna area does not enter hibernation
@@ -575,15 +575,15 @@ void setup(void) {
 
 void main(void){
 
-    //4 bytes para o n˙mero sserial do cart„o, e um byte para o checksum.
+    //4 bytes para o n√∫mero sserial do cart√£o, e um byte para o checksum.
     uchar serNum[5];
-    uchar writeDate[16];  //Dados a serem gravados no cart„o
+    uchar writeDate[16];  //Dados a serem gravados no cart√£o
     uchar sectorKeyA[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     bit Led_s = 0, Led_f = 0; //indica led apagado
     uchar i, ok = 2;
     uchar status;
-    uchar blockAddr = 7;    //Seleciona o endereÁo do bloco (setor de autenticaÁ„o)
-    uchar setor = 4;        //Seletiona o endereÁo do setor a ser lido/escrito
+    uchar blockAddr = 7;    //Seleciona o endere√ßo do bloco (setor de autentica√ß√£o)
+    uchar setor = 4;        //Seletiona o endere√ßo do setor a ser lido/escrito
     
     setup();
     output_low(LED);//apaga o led!
@@ -593,10 +593,10 @@ void main(void){
 
         status = MFRC522_Request(PICC_REQIDL, writeDate);
         status = MFRC522_Anticoll(writeDate);
-        memcpy(serNum, writeDate, 5);
+        memcpy(serNum, writeDate, 5); //ver isso depois
 
         
-        if( Read_MFRC522( CommIrqReg ) & 0x20){ //Detector de cart„o
+        if( Read_MFRC522( CommIrqReg ) & 0x20){ //Detector de cart√£o
             output_high(LED); //acende
             delay_ms(50);
             output_low(LED); //apaga
@@ -607,14 +607,14 @@ void main(void){
             Led_f = 0;//supoe-se que o led esta apagado 
             
             if(Led_s == 1 && status == MI_OK){
-                output_low(LED); //se o led estiver aceso e detectou um cart„o,  ent„o apaga (seta o bit!)
-                Led_s = 0; //indica que o led est· apagado
+                output_low(LED); //se o led estiver aceso e detectou um cart√£o,  ent√£o apaga (seta o bit!)
+                Led_s = 0; //indica que o led est√° apagado
                 Led_f = 1; //indica que o led estava aceso.
             }   
             
         }
 
-         //--------------------- Mostra o n˙mero serial
+         //--------------------- Mostra o n√∫mero serial
         if (status == MI_OK){
             for(i=0; i<5; i++){
                 printf(" %i", serNum[i]);
@@ -624,17 +624,17 @@ void main(void){
         
 
         MFRC522_SelectTag(serNum);
-        //======================================================================================================= ROTINA PARA LER O CART√O
+        //======================================================================================================= ROTINA PARA LER O CART√ÉO
         status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autentica primeiro
         if (status == MI_OK){                                                 //e verifica se deu certo...
             printf("Lendo:\n");
-            status = MFRC522_Read(setor, writeDate);                                //Ler o cart„o - "str" recebe os dados. (lembrando, s„o 16 bytes - str[0] a str[15])
+            status = MFRC522_Read(setor, writeDate);                                //Ler o cart√£o - "str" recebe os dados. (lembrando, s√£o 16 bytes - str[0] a str[15])
 
 
         //=======================================================================================================
 
 
-        //-------------------------------- Usando os dados lidos do cart„o
+        //-------------------------------- Usando os dados lidos do cart√£o
             if(status == MI_OK){
                printf("Dados: ");
                for (i=0; i<16; i++)        //percorre todo o vetor dos dados
@@ -658,36 +658,33 @@ void main(void){
 
         if(ok < 2 && Led_f == 0){
             //Serial.println("Escrevendo...");
-            //=================================================================================================== ROTINA PARA ESCREVER NO CART√O
+            //=================================================================================================== ROTINA PARA ESCREVER NO CART√ÉO
             if(ok == 1){
                 printf("Recarregando.\n");
                 writeDate[15] = 10;
             } 
             else{
                 printf("Saldo atual: %i\n", writeDate[15]-1);
-                writeDate[15] = writeDate[15] - 1;  //decrementa o valor em write data na posiÁ„o 15 (ultima posiÁ„o)
+                writeDate[15] = writeDate[15] - 1;  //decrementa o valor em write data na posi√ß√£o 15 (ultima posi√ß√£o)
             }
           
             status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autenticar primeiro
             if (status == MI_OK){                                                 //se autenticou...
-                status = MFRC522_Write(setor, writeDate);                         //Escreve no cart„o os dados contidos em "writeData"
-              
-                //if(status == MI_OK) Serial.println("escrito OK!");                //verifica se escreveu corretamente
-                //else Serial.println("Erro na escrita!");
+                status = MFRC522_Write(setor, writeDate);                         //Escreve no cart√£o os dados contidos em "writeData"
             }
             else printf("Erro: autent. p escrita!\n");
             //===================================================================================================
             
         }
         if(Led_s == 1){
-            output_high(LED); //acende led, Led_s È 1
+            output_high(LED); //acende led, Led_s √© 1
             delay_ms(1000);
         }
-        
+               
         MFRC522_Halt(); //leitor em modo hibernation
 
         //-------------------------------------
-        delay_ms(100);
+        //delay_ms(100);
     }
 }
 
