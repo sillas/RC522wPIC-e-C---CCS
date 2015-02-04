@@ -559,11 +559,11 @@ void setup(void) {
   setup_vref(FALSE);
     
   output_high(LEDW); //acende
-  delay_ms(50);
+  delay_ms(100);
   output_low(LEDW); //apaga
   delay_ms(100);
   output_high(LEDW); //acende
-  delay_ms(50);
+  delay_ms(100);
   output_low(LEDW); //apaga
             
             
@@ -578,13 +578,11 @@ void setup(void) {
 //=====================================================================
 
 void main(void){
-<<<<<<< HEAD
     //4 bytes para o número sserial do cartão, e um byte para o checksum.
     uchar serNum[5];
-    uchar Date[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10};  //Dados a serem gravados no cartão
+    uchar Date[16];  //Dados a serem gravados no cartão
 
     uchar sectorKeyA[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    bit Led_s = 0;
     uchar i, ok = 2;
     uchar status;
     
@@ -592,27 +590,27 @@ void main(void){
     uchar setor = 4;        //Seletiona o endereço do setor a ser lido/escrito 
 
     setup();
-
+    output_low(LEDB);
     while(TRUE){
         ok = 2;
-        if(input(LEDW)) output_low(LEDW);
-
+        
         status = MFRC522_Request(PICC_REQIDL, Date);
         status = MFRC522_Anticoll(Date);
         memcpy(serNum, Date, 5);
-
-        if( Read_MFRC522( CommIrqReg ) & 0x20) output_high(LEDW); //Detector de cartão
+        
+        output_low(LEDW);
+        if( Read_MFRC522( CommIrqReg ) & 0x20){
+            output_high(LEDW); //Detector de cartão
+            delay_ms(100);
+        }
         
 
-         //--------------------- Mostra o nÃºmero serial
+         //--------------------- Mostra o número serial
         if (status == MI_OK){
-            printf("\n --- \n");
-
-            printf("Serial:");
+            printf("-S");
             for(i=0; i<5; i++){
-                printf(" %i", serNum[i]);
+                printf(".%i", serNum[i]);
             }
-            printf("\n");
         }//-------------------------------------------
 
         MFRC522_SelectTag(serNum);
@@ -624,42 +622,43 @@ void main(void){
 
 
             if(status != MI_OK)
-                printf("Erro na leitura!");                           //verifica se deu erro na leitura
+                printf("-EL");                           //verifica se deu erro na leitura
         //=======================================================================================================
 
 
         //-------------------------------- Usando os dados lidos do cartão
             else{
-               //printf("Leitura, Dados: ");
+               printf("-SA%i-\n", Date[15]);
                for (i=0; i<16; i++)                          //percorre todo o vetor dos dados
-                   printf("%i -", Date[i]); //mostra os dados lidos byte por byte
-               printf("-SA: %i\n", Date[15]);
+                   printf("%i-", Date[i]); //mostra os dados lidos byte por byte
+               
 
          
                //--------------------------
                if(Date[15] <= 0){
                    if(input(BUTTON) == 1) ok = 1;
-                   else printf("-NC\n"); 
+                   else printf("-NC"); 
                }
                else ok = 0;
                if( input(BUTTON) == 1 || Date[15] > 10 )ok = 1;
                //--------------------------
              
-               if(Date[15] > 0)Led_s = 1;
+               if(Date[15] > 0 && input(LEDB) == 0) output_high(LEDB);
+               else output_low(LEDB);
            }
         }
         //-----------------------------------------------
 
 
-        if(ok < 2){
+        if(ok < 2 && input(LEDB) == 0){
             //Serial.println("Escrevendo...");
             //=================================================================================================== ROTINA PARA ESCREVER NO CARTÃƒO
             if(ok == 1){
-                printf("-R\n");
+                printf("-R");
                 Date[15] = 10;
             } 
             else{
-                printf("SaT: %i\n", Date[15]-1);
+                printf("-SaT%i", Date[15]-1);
                 Date[15] = Date[15] - 1;  //decrementa o valor em write data na posição 15 (ultima posição)
 
             }
@@ -677,10 +676,6 @@ void main(void){
         }
 
         MFRC522_Halt(); //leitor em modo hibernation
-      
-     
-        if(Led_s) output_toggle(LEDB);
-        Led_s = 0;
         //-------------------------------------
         delay_ms(500);
     }
