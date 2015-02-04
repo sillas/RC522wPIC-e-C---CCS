@@ -1,5 +1,6 @@
 #include <16F628A.h> 
-#fuses INTRC_IO, NOWDT, NOPROTECT, BROWNOUT, PUT, NOLVP, , NOLVP
+#fuses INTRC_IO, NOWDT, NOPROTECT, BROWNOUT, PUT, NOLVP
+
 #use delay(clock=4000000)
 #use rs232 (uart1, baud = 9600, parity=n )
 #use fast_io(b)
@@ -18,8 +19,9 @@
 #define RST_PIN               PIN_A2
 
 #define BUTTON                PIN_A3 //IN
-#define LEDW                   PIN_A4 //LED
+#define LEDW                  PIN_A4 //LED
 #define LEDB                  PIN_B3 //LED
+
 //------------------------------------------------------------------
 
 //And MF522 The error code is returned when communication
@@ -37,7 +39,7 @@
 //#define     PCD_TRANSMIT          0x04               //Transmit data
 #define     PCD_TRANSCEIVE        0x0C               //Transmit and receive data,
 #define     PCD_RESETPHASE        0x0F               //Reset
-#define     PCD_CALCCRC           0x03               //CRC Calculate - Verificação de erros nos dados
+#define     PCD_CALCCRC           0x03               //CRC Calculate - VerificaÃ§Ã£o de erros nos dados
 
 // Mifare_One card command word
 #define    PICC_REQIDL           0x26               // find the antenna area does not enter hibernation
@@ -576,13 +578,16 @@ void setup(void) {
 //=====================================================================
 
 void main(void){
+<<<<<<< HEAD
     //4 bytes para o número sserial do cartão, e um byte para o checksum.
     uchar serNum[5];
     uchar Date[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10};  //Dados a serem gravados no cartão
+
     uchar sectorKeyA[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     bit Led_s = 0;
     uchar i, ok = 2;
     uchar status;
+    
     uchar blockAddr = 7;    //Seleciona o endereço do bloco (setor de autenticação)
     uchar setor = 4;        //Seletiona o endereço do setor a ser lido/escrito 
 
@@ -597,8 +602,9 @@ void main(void){
         memcpy(serNum, Date, 5);
 
         if( Read_MFRC522( CommIrqReg ) & 0x20) output_high(LEDW); //Detector de cartão
+        
 
-         //--------------------- Mostra o número serial
+         //--------------------- Mostra o nÃºmero serial
         if (status == MI_OK){
             printf("\n --- \n");
 
@@ -610,11 +616,12 @@ void main(void){
         }//-------------------------------------------
 
         MFRC522_SelectTag(serNum);
-        //======================================================================================================= ROTINA PARA LER O CARTÃO
+        //======================================================================================================= ROTINA PARA LER O CARTÃƒO
         status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autentica primeiro
         if (status == MI_OK){                                                 //e verifica se deu certo...
             //printf("Lendo...\n");
             status = MFRC522_Read(setor, Date);                                //Ler o cartão - "str" recebe os dados. (lembrando, são 16 bytes - str[0] a str[15])
+
 
             if(status != MI_OK)
                 printf("Erro na leitura!");                           //verifica se deu erro na leitura
@@ -627,6 +634,7 @@ void main(void){
                for (i=0; i<16; i++)                          //percorre todo o vetor dos dados
                    printf("%i -", Date[i]); //mostra os dados lidos byte por byte
                printf("-SA: %i\n", Date[15]);
+
          
                //--------------------------
                if(Date[15] <= 0){
@@ -645,7 +653,7 @@ void main(void){
 
         if(ok < 2){
             //Serial.println("Escrevendo...");
-            //=================================================================================================== ROTINA PARA ESCREVER NO CARTÃO
+            //=================================================================================================== ROTINA PARA ESCREVER NO CARTÃƒO
             if(ok == 1){
                 printf("-R\n");
                 Date[15] = 10;
@@ -653,6 +661,7 @@ void main(void){
             else{
                 printf("SaT: %i\n", Date[15]-1);
                 Date[15] = Date[15] - 1;  //decrementa o valor em write data na posição 15 (ultima posição)
+
             }
           
             status = MFRC522_Auth(PICC_AUTHENT1A, blockAddr, sectorKeyA, serNum); //autenticar primeiro
@@ -661,6 +670,7 @@ void main(void){
               
                 //if(status == MI_OK) Serial.println("escrito OK!");                //verifica se escreveu corretamente
                 //else Serial.println("Erro na escrita!");
+
             }
             //else printf("Erro na autenticacao para escrita!\n");
             //===================================================================================================
@@ -671,7 +681,6 @@ void main(void){
      
         if(Led_s) output_toggle(LEDB);
         Led_s = 0;
-
         //-------------------------------------
         delay_ms(500);
     }
